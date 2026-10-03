@@ -702,5 +702,20 @@ Create the README and add the files to create and push the public repo
     - `ls -la task-manager-maven/.git`
     - `rm -rf task-manager-maven/.git`
     - `git rm -r --cached task-manager-maven`
-    `git add task-manager-maven`
-    ``
+    - `git add task-manager-maven`
+    - `git status`
+        ```
+        ricardo@LAPTOP-5NQFTCQB:/mnt/c/Users/ASUS/Videos/30 - mini java project$ git commit -m "Update
+        - Fix task-manager-maven: remove submodule, track as regular files"
+        ```
+    - `git push`
+
+- I want to change the commit message I sent wrong
+    - `git commit --amend -m "Update task-manager-maven: remove submodule and track as regular files"` change the commit message of the latest commit
+    - `git push --force-with-lease` update the remote
+
+    - 
+
+
+I need to test the public repo now to see if I can clone and run the application
+- 
