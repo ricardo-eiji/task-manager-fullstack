@@ -681,8 +681,14 @@ Create the README and add the files to create and push the public repo
     - `git status`
     - `git add .`
 
-    - `rm -rf task-manager-maven/.git`
+    - `rm -rf task-manager-maven/.git` Can't be a submodule
     - `git rm --cached task-manager-maven`
     - `git add task-manager-maven`
+
+    - Create a Public Repo in GitHub
+        - Name: task-manager-fullstack
+        - Public
+        - No README
+        - No .gitignore
 
     - 
