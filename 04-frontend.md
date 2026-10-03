@@ -685,10 +685,22 @@ Create the README and add the files to create and push the public repo
     - `git rm --cached task-manager-maven`
     - `git add task-manager-maven`
 
-    - Create a Public Repo in GitHub
-        - Name: task-manager-fullstack
-        - Public
-        - No README
-        - No .gitignore
+- Create a Public Repo in GitHub
+    - Name: task-manager-fullstack
+    - Public
+    - No README
+    - No .gitignore
 
-    - 
+- Connect the local repo to public repo
+    - `git remote add origin git@github.com:ricardo-eiji/task-manager-fullstack.git`
+
+    - `git branch -M main`
+
+    - `git push -u origin main`
+
+- in task-manager-maven in GitHub it's showing a submodule link
+    - `ls -la task-manager-maven/.git`
+    - `rm -rf task-manager-maven/.git`
+    - `git rm -r --cached task-manager-maven`
+    `git add task-manager-maven`
+    ``
