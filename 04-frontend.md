@@ -714,8 +714,16 @@ Create the README and add the files to create and push the public repo
     - `git commit --amend -m "Update task-manager-maven: remove submodule and track as regular files"` change the commit message of the latest commit
     - `git push --force-with-lease` update the remote
 
-    - 
+    - `git rebase -i 67aa516^`
+    - It will open a nano page
+        - Change: pick 67aa516 UpdateFix task-manager-maven...
+        - To: reword 67aa516 UpdateFix task-manager-maven...
+        - Save: `Ctrl + O` -> `Enter` -> `Ctrl + X`
+        - It will show another nano page:
+            - In the first line, write the new message
+            Save: `Ctrl + O` -> `Enter` -> `Ctrl + X`
+        - `git push --force-with-lease`
 
 
-I need to test the public repo now to see if I can clone and run the application
+Test the public repo now to see if I can clone and run the application
 - 
