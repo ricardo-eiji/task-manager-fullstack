@@ -26,6 +26,7 @@ services:
       SPRING_DATASOURCE_USERNAME: taskuser
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD} # Reading .env file
       ADMIN_PASSWORD: ${ADMIN_PASSWORD} # Container will read SecurityConfig.java will read it via @Value("${ADMIN_PASSWORD}")
+      JWT_SECRET: ${JWT_SECRET}
 
 # The environment section passes configuration values to Spring Boot container
 # These values tell Spring boot how to connect to PostgreSQL (db:5432 is the Docker service, not your computer)

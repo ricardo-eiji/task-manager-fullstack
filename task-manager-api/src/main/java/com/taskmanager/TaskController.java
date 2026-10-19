@@ -1,81 +1,75 @@
-
 package com.taskmanager;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
-import jakarta.validation.Valid;
-
-import java.util.List;
-
-
 @RestController
-@RequestMapping("/tasks") // GET /tasks/5 → run getTask(5).
-
-// Responsible for the HTTP endpoints (Methods + URL)
-
-public class TaskController {
+@RequestMapping("/tasks")
+public class TaskController
+{
     @Autowired
     private TaskRepository taskRepository;
 
-    @GetMapping // Get all tasks 
-    public List<TaskResponseDTO> getAllTasks()
+    @Autowired
+    private UserRepository userRepository;
+
+    // Only finds the task if it belongs to the logged-in user
+    private Task findOwnedTask(int id, Authentication auth)
     {
-        return taskRepository.findAll()
+        return taskRepository.findByIdAndOwnerUsername(id, auth.getName())
+            .orElseThrow(() -> new RuntimeException("Task not found"));
+    }
+
+    @GetMapping
+    public List<TaskResponseDTO> getAllTasks(Authentication auth)
+    {
+        return taskRepository.findByOwnerUsernameOrderByIdAsc(auth.getName())
             .stream()
             .map(TaskResponseDTO::new)
             .collect(Collectors.toList());
     }
-    // curl http://localhost:8080/tasks
 
-    @PostMapping // Add task - Just add the title of the task
-    public TaskResponseDTO addTask (@Valid @RequestBody TaskRequestDTO request)
+    @PostMapping
+    public TaskResponseDTO addTask(@Valid @RequestBody TaskRequestDTO request, Authentication auth)
     {
-        // return taskRepository.save(task);
+        User owner = userRepository.findByUsername(auth.getName())
+            .orElseThrow(InvalidCredentialsException::new);
+
         Task task = new Task(request.getTitle());
-        Task saved = taskRepository.save(task);
-        return new TaskResponseDTO(saved);
+        task.setOwner(owner);
+        return new TaskResponseDTO(taskRepository.save(task));
     }
-    // curl -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"title": "Study Spring Boot"}'
 
-    @GetMapping("/{id}") // try to find a specific task via ID
-    public TaskResponseDTO getTask(@PathVariable int id)    
+    @GetMapping("/{id}")
+    public TaskResponseDTO getTask(@PathVariable int id, Authentication auth)
     {
-        Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Task not found"));
-        return new TaskResponseDTO(task);
-        // return taskRepository.findById(id)
-        //     .orElseThrow(() -> new RuntimeException("Task not found"));
+        return new TaskResponseDTO(findOwnedTask(id, auth));
     }
-    // curl http://localhost:8080/tasks/2
 
-    @PutMapping("/{id}/complete") // Transforming from "TODO" to "DONE" - Specify the ID
-    public TaskResponseDTO completeTask(@PathVariable int id)
+    @PutMapping("/{id}/complete")
+    public TaskResponseDTO completeTask(@PathVariable int id, Authentication auth)
     {
-        Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Task not found"));
+        Task task = findOwnedTask(id, auth);
         task.setStatus(TaskStatus.DONE);
-        Task saved = taskRepository.save(task);
-        return new TaskResponseDTO(saved);
+        return new TaskResponseDTO(taskRepository.save(task));
     }
-    // curl -X PUT http://localhost:8080/tasks/1/complete
 
     @PutMapping("/{id}/undo")
-    public TaskResponseDTO undoTask(@PathVariable int id)
+    public TaskResponseDTO undoTask(@PathVariable int id, Authentication auth)
     {
-        Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Task not found"));
+        Task task = findOwnedTask(id, auth);
         task.setStatus(TaskStatus.TODO);
-        Task saved = taskRepository.save(task);
-        return new TaskResponseDTO(saved);
+        return new TaskResponseDTO(taskRepository.save(task));
     }
 
     @DeleteMapping("/{id}")
-    public void deleteTask(@PathVariable int id)
+    public void deleteTask(@PathVariable int id, Authentication auth)
     {
-        taskRepository.deleteById(id);
+        taskRepository.delete(findOwnedTask(id, auth));
     }
-    // curl -X DELETE http://localhost:8080/tasks/1
 }

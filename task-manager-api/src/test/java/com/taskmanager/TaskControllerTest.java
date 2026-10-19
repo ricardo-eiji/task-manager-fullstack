@@ -1,6 +1,7 @@
 package com.taskmanager;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,69 +10,123 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 
-// Goal: Write a unit test for TaskController (With the HTTP endpoints) 
-// using JUnit + Mockito, without hitting the real database
-
-@SpringBootTest // Loads the full Spring app context
-@AutoConfigureMockMvc // Gives MockMvc, which simulates HTTP requests without a real running server
+@SpringBootTest(properties = {
+    "jwt.secret=test-secret-test-secret-test-secret-test-secret-test-secret-1234"
+})
+@AutoConfigureMockMvc
 public class TaskControllerTest
 {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @MockitoBean
     private TaskRepository taskRepository;
-    // Replaces the real TaskRepository with a fake one 
-    // No real database calls happen during the test
 
-    @Test
-    public void shouldReturnAllTasks() throws Exception
+    @MockitoBean
+    private UserRepository userRepository;
+
+    private String bearer(String username)
     {
-        Task task = new Task("Study Java");
-        Mockito.when(taskRepository.findAll()).thenReturn(List.of(task)); // Tells the fake repository: "When findAll() is called, pretend it returned this one task"
-
-        mockMvc.perform(get("/tasks").with(httpBasic("admin", "admin123")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].title").value("Study Java"));
-        // Simulates a GET /tasks request
-        // Asserts: response status is 200 OK, and the first item's title in the JSON response is "Study Java"
+        return "Bearer " + jwtUtil.generateToken(username);
     }
 
     @Test
-    public void shouldCreateTask() throws Exception
+    public void shouldReturnOnlyTheCurrentUsersTasks() throws Exception
     {
-        Task task = new Task("New Task");
-        // Create the Task we expect to be returned
+        Task task = new Task("Study Java");
+        Mockito.when(taskRepository.findByOwnerUsernameOrderByIdAsc("alice"))
+            .thenReturn(List.of(task));
 
-        Mockito.when(taskRepository.save(Mockito.any(Task.class))).thenReturn(task);
-        // The Mockito.any(Task.class) — matches any Task object passed to save(), 
-            // since we don't care about the exact instance
-        // When save() is called with any Task, return our task
+        mockMvc.perform(get("/tasks").header("Authorization", bearer("alice")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].title").value("Study Java"));
 
-        mockMvc.perform(post("/tasks") // Simulates POST /tasks with a JSON body
-                .with(httpBasic("admin", "admin123"))
-                .contentType("application/json") // Tell the server we're sending JSON
-                .content("{\"title\": \"New Task\"}")) // Tell JSON data we're sending
-            .andExpect(status().isOk()) // Expect HTTP 200 OK
-            .andExpect(jsonPath("$.title").value("New Task")); // Expect the response JSON to contain title "New Task"
+        // bob has no tasks, and alice's are not returned to him
+        mockMvc.perform(get("/tasks").header("Authorization", bearer("bob")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isEmpty());
+    }
 
-        // Simulates the HTTP request we'd make from a client/terminal: POST /tasks with JSON body
+    @Test
+    public void shouldCreateTaskOwnedByTheCurrentUser() throws Exception
+    {
+        User alice = new User("alice", "hash");
+        Mockito.when(userRepository.findByUsername("alice")).thenReturn(Optional.of(alice));
+        Mockito.when(taskRepository.save(Mockito.any(Task.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        mockMvc.perform(post("/tasks")
+                .header("Authorization", bearer("alice"))
+                .contentType("application/json")
+                .content("{\"title\": \"New Task\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("New Task"));
+
+        ArgumentCaptor<Task> saved = ArgumentCaptor.forClass(Task.class);
+        Mockito.verify(taskRepository).save(saved.capture());
+        assertSame(alice, saved.getValue().getOwner());
     }
 
     @Test
     public void shouldReturn404WhenTaskNotFound() throws Exception
     {
-        Mockito.when(taskRepository.findById(999)).thenReturn(java.util.Optional.empty());
+        Mockito.when(taskRepository.findByIdAndOwnerUsername(999, "alice"))
+            .thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/tasks/999").with(httpBasic("admin", "admin123")))
+        mockMvc.perform(get("/tasks/999").header("Authorization", bearer("alice")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void shouldNotLetAUserReadAnotherUsersTask() throws Exception
+    {
+        Task alicesTask = new Task("Alice private");
+        Mockito.when(taskRepository.findByIdAndOwnerUsername(5, "alice"))
+            .thenReturn(Optional.of(alicesTask));
+        Mockito.when(taskRepository.findByIdAndOwnerUsername(5, "bob"))
+            .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/tasks/5").header("Authorization", bearer("alice")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Alice private"));
+
+        // 404, not 403: the API doesn't confirm the task exists
+        mockMvc.perform(get("/tasks/5").header("Authorization", bearer("bob")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void shouldNotLetAUserDeleteAnotherUsersTask() throws Exception
+    {
+        Mockito.when(taskRepository.findByIdAndOwnerUsername(5, "bob"))
+            .thenReturn(Optional.empty());
+
+        mockMvc.perform(delete("/tasks/5").header("Authorization", bearer("bob")))
             .andExpect(status().isNotFound());
 
-        // Second test verifies your GlobalExceptionHandler 
-            // correctly returns 404 for a missing task
+        Mockito.verify(taskRepository, Mockito.never()).delete(Mockito.any(Task.class));
+    }
+
+    @Test
+    public void shouldReturn401WithoutToken() throws Exception
+    {
+        mockMvc.perform(get("/tasks"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void shouldReturn401WithInvalidToken() throws Exception
+    {
+        mockMvc.perform(get("/tasks").header("Authorization", "Bearer not-a-real-token"))
+            .andExpect(status().isUnauthorized());
     }
 }
