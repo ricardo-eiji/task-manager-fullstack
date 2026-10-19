@@ -27,7 +27,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/task_manager
       SPRING_DATASOURCE_USERNAME: taskuser
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # ADMIN_PASSWORD: ${ADMIN_PASSWORD} # It's not reading anymore
+      JWT_SECRET: ${JWT_SECRET}
 
   frontend:
     build:

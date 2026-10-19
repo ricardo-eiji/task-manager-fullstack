@@ -170,3 +170,7 @@ Related to repo
 
 - For your task manager, a single root repo is a realistic professional approach because the frontend, API, database configuration, and local Docker setup are all parts of one small application. 
     - If the project later grows into independently deployed services with separate teams, you could split them into multiple repos.
+
+
+Learning
+- Yes — **that's a very normal way to learn programming**. Programmers constantly look at documentation, examples, existing code, and other people's solutions, then understand the pattern and adapt it. The important part isn't memorizing every line; it's gradually reaching the point where you can explain **what the code is doing, why it's there, and how you'd modify it**. Using AI is fine too — just don't stop at copying: ask yourself questions like *“Where does this value come from?”*, *“Who calls this function?”*, and *“What would break if I changed this?”* That process is how “seeing code” turns into actually knowing how to write it.
