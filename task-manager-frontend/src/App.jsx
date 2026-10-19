@@ -1,36 +1,46 @@
 import { useEffect, useState } from 'react'
+import Login from './Login'
 
 const API_URL = import.meta.env.VITE_API_URL
-  // This is associated with the .env.development (if we use `npm run dev` in task-manager-frontend directory)
-  // Or it's associated with docker-compose.yaml (If we use `docker compose up` at root)
 
 function App() {
+  const [token, setToken] = useState(null)
   const [tasks, setTasks] = useState([])
   const [title, setTitle] = useState('')
 
-  const authHeader = 'Basic ' + btoa('admin:admin123')
+  // Every request goes through here: adds the token, and logs out on 401
+  const apiFetch = (path, options = {}) =>
+    fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`
+      }
+    }).then(res => {
+      if (res.status === 401) {
+        setToken(null)
+        throw new Error('Session expired')
+      }
+      return res
+    })
 
   const fetchTasks = () => {
-    fetch(`${API_URL}/tasks`, {
-      headers: { Authorization: authHeader }
-    })
+    apiFetch('/tasks')
       .then(res => res.json())
       .then(data => setTasks(data))
       .catch(err => console.error(err))
   }
 
   useEffect(() => {
-    fetchTasks()
-  }, [])
+    if (token) fetchTasks()
+    else setTasks([])
+  }, [token])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    fetch(`${API_URL}/tasks`, {
+    apiFetch('/tasks', {
       method: 'POST',
-      headers: {
-        Authorization: authHeader,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title })
     })
       .then(res => res.json())
@@ -42,36 +52,39 @@ function App() {
   }
 
   const handleComplete = (id) => {
-    fetch(`${API_URL}/tasks/${id}/complete`, {
-      method: 'PUT',
-      headers: { Authorization: authHeader }
-    })
+    apiFetch(`/tasks/${id}/complete`, { method: 'PUT' })
       .then(() => fetchTasks())
       .catch(err => console.error(err))
   }
 
   const handleUndo = (id) => {
-    fetch(`${API_URL}/tasks/${id}/undo`, {
-      method: 'PUT',
-      headers: { Authorization: authHeader }
-    })
+    apiFetch(`/tasks/${id}/undo`, { method: 'PUT' })
       .then(() => fetchTasks())
       .catch(err => console.error(err))
   }
 
   const handleDelete = (id) => {
-    fetch(`${API_URL}/tasks/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: authHeader }
-    })
+    apiFetch(`/tasks/${id}`, { method: 'DELETE' })
       .then(() => fetchTasks())
       .catch(err => console.error(err))
+  }
+
+  if (!token) {
+    return <Login onLogin={setToken} />
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Task Manager</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">Task Manager</h1>
+          <button
+            onClick={() => setToken(null)}
+            className="text-sm text-gray-500 hover:text-gray-800"
+          >
+            Log out
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
           <input
