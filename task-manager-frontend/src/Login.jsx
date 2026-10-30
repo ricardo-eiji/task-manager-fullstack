@@ -9,7 +9,9 @@ async function post(path, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   })
+  
   const data = await res.json().catch(() => ({}))
+
   if (!res.ok) {
     throw new Error(data.error || Object.values(data)[0] || 'Something went wrong')
   }

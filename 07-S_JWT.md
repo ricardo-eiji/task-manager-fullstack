@@ -870,3 +870,47 @@ VCpmNUP9MYkzsq9krKdz3fJDc3xMkrIrKnXLtov4c0RMJZxfR7yz+CvxYfULSfjf
 
 
 ### Commit and push
+```bash
+git status    # review the list once more
+
+git add task-manager-api
+git commit -m "update
+- Add JWT auth, BCrypt users, per-user task ownership and tests"
+
+git add task-manager-frontend
+git commit -m "update
+- Add login/register form
+- JWT handling in frontend"
+
+git add -A
+git commit -m "Remove ADMIN_PASSWORD, update docs and notes"
+
+git push
+```
+
+### Next steps
+- Done
+    - JWT, users with BCrypt, per-user tasks, 13 tests, cleaned up and pushed
+
+- Next 
+    - Flyway database migrations 
+        - Hibernate currently changes the schema by itself (ddl-auto=update)
+        - Fine for learning, but risky on a real database
+        - AWS database depends on Flyway next 
+        - Do this before the RDS means the new database gets a controlled versioned schema from day one 
+
+
+    - AWS deployment
+        - AWS account, a billing alert, an IAM user 
+        - RDS PostgreSQL, EC2 with Docker, Security groups (database reachable only from EC2 instance)
+        - Production config
+            - Must change for deployment: CORS origin, VITE_API_URL, JWT_SECRET
+        - Domain name pointing to EC2, then HTTPS
+
+    - Later
+        - Service layer, GitHub Actions CI, Testcontainers
+        - httpOnly cookies, replacing the catch all RuntimeException -> 404 handler with specific exceptions
+
+    - Suggestion:
+        - Do Flyway next, since it's small
+        - AWS database depends on it 
